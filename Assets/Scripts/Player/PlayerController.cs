@@ -1,66 +1,42 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerController : MonoBehaviour
 {
-    [Header("Movement Settings")]
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float rotationSpeed = 10f;
+    
+    private Rigidbody rb;
+    private Camera mainCam;
 
-    private Rigidbody playerRigidbody;
-    private Camera mainCamera;
-    private Vector2 moveInput;
-    private Vector2 lookInput;
-
-    private void Awake()
+    void FixedUpdate()
     {
-        playerRigidbody = GetComponent<Rigidbody>();
-        mainCamera = Camera.main;
-    }
+        float inputX = Input.GetAxisRaw("Horizontal");
+        float inputZ = Input.GetAxisRaw("Vertical");
+        rb = GetComponent<Rigidbody>();
+        mainCam = Camera.main;
 
-    private void FixedUpdate()
-    {
-        HandleMovement();
-        HandleRotation();
-    }
+        Vector3 inputDir = new Vector3(inputX, 0f, inputZ).normalized;
+        if (inputDir.magnitude >= 0.01f)
+        {
+            Vector3 move = inputDir * moveSpeed;
+            rb.MovePosition(rb.position + move * Time.fixedDeltaTime);
+        }
+        Vector3 worldPos = GetMouseWorldPositionAtPlayerHeight();
 
-    public void OnMove(InputValue value)
-    {
-        moveInput = value.Get<Vector2>();
-    }
-
-    public void OnLook(InputValue value)
-    {
-        lookInput = value.Get<Vector2>();
-    }
-
-    private void HandleMovement()
-    {
-        if (moveInput.sqrMagnitude < 0.01f)
-            return;
-
-        Vector3 inputDirection = new Vector3(moveInput.x, 0f, moveInput.y).normalized;
-        Vector3 movement = inputDirection * moveSpeed;
-        playerRigidbody.MovePosition(playerRigidbody.position + movement * Time.fixedDeltaTime);
-    }
-
-    private void HandleRotation()
-    {
-        Vector3 worldPosition = GetMouseWorldPositionAtPlayerHeight();
-        Vector3 direction = worldPosition - transform.position;
+        Vector3 direction = worldPos - transform.position;
         direction.y = 0f;
 
         if (direction.sqrMagnitude > 0.001f)
         {
-            Quaternion targetRotation = Quaternion.LookRotation(direction);
-            playerRigidbody.MoveRotation(Quaternion.Slerp(playerRigidbody.rotation, targetRotation, rotationSpeed * Time.fixedDeltaTime));
+            Quaternion targetRot = Quaternion.LookRotation(direction);
+            rb.MoveRotation(Quaternion.Slerp(rb.rotation, targetRot, rotationSpeed * Time.fixedDeltaTime));
         }
     }
-
-    private Vector3 GetMouseWorldPositionAtPlayerHeight()
+    Vector3 GetMouseWorldPositionAtPlayerHeight()
     {
-        Ray ray = mainCamera.ScreenPointToRay(Mouse.current.position.ReadValue());
+        Ray ray = mainCam.ScreenPointToRay(Input.mousePosition);
+
         Plane plane = new Plane(Vector3.up, new Vector3(0, transform.position.y, 0));
 
         if (plane.Raycast(ray, out float distance))
@@ -70,4 +46,5 @@ public class PlayerController : MonoBehaviour
 
         return transform.position + transform.forward;
     }
+
 }
